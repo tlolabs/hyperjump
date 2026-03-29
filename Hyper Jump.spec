@@ -1,9 +1,10 @@
 from pathlib import Path
 
+import panda3d
 from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs
 
 project_root = Path.cwd()
-panda3d_root = project_root / ".venv" / "lib" / "python3.14" / "site-packages" / "panda3d"
+panda3d_root = Path(panda3d.__file__).resolve().parent
 data_files = [
     (str(project_root / "alien sound.mp3"), "."),
     (str(project_root / "boss sound.mp3"), "."),
@@ -56,4 +57,11 @@ coll = COLLECT(
     upx=True,
     upx_exclude=[],
     name="Hyper Jump",
+)
+
+app = BUNDLE(
+    coll,
+    name="Hyper Jump.app",
+    icon=None,
+    bundle_identifier="com.tlolabs.hyperjump",
 )

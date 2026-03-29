@@ -17,7 +17,7 @@ python -m pip install -r requirements.txt
 python main.py
 ```
 
-## Build An Executable
+## Build A macOS App Bundle
 
 1. Install the build dependency:
 
@@ -31,7 +31,27 @@ python -m pip install -r build_requirements.txt
 env PYINSTALLER_CONFIG_DIR="$PWD/.pyinstaller" python -m PyInstaller -y "Hyper Jump.spec"
 ```
 
-3. Find the built output in `dist/`.
+3. Find the built `.app` bundle in `dist/Hyper Jump.app`.
+
+## Build A macOS DMG
+
+After building the app bundle, create a DMG with:
+
+```bash
+scripts/build-macos-dmg.sh
+```
+
+The DMG is written to `dist/Hyper Jump-macOS-<arch>.dmg`.
+
+## GitHub Releases
+
+Pushing a tag like `v1.0.0` triggers the GitHub Actions workflow in `.github/workflows/release-macos.yml`, which:
+
+1. Builds the macOS `.app`
+2. Packages it into a DMG
+3. Uploads the DMG to the corresponding GitHub Release
+
+That Release asset is the recommended download location for macOS players.
 
 ## Controls
 

@@ -1,0 +1,51 @@
+name: Build macOS DMG
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r build_requirements.txt
+
+      - name: Build app bundle
+        run: |
+          env PYINSTALLER_CONFIG_DIR="$PWD/.pyinstaller" python -m PyInstaller -y "Hyper Jump.spec"
+
+      - name: Build DMG
+        run: |
+          chmod +x scripts/build-macos-dmg.sh
+          scripts/build-macos-dmg.sh
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hyper-jump-macos-dmg
+          path: dist/*.dmg
+          if-no-files-found: error
+
+      - name: Publish release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.dmg
+          generate_release_notes: true
