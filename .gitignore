@@ -1,0 +1,10 @@
+.venv/
+.pyinstaller/
+__pycache__/
+*.pyc
+
+build/
+dist/
+
+.DS_Store
+crash.log
