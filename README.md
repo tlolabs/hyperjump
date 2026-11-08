@@ -45,13 +45,7 @@ The DMG is written to `dist/Hyper Jump-macOS-<arch>.dmg`.
 
 ## GitHub Releases
 
-Pushing a tag like `v1.0.0` triggers the GitHub Actions workflow in `.github/workflows/release-macos.yml`, which:
-
-1. Builds the macOS `.app`
-2. Packages it into a DMG
-3. Uploads the DMG to the corresponding GitHub Release
-
-That Release asset is the recommended download location for macOS players.
+Native CI checks new `vMAJOR.MINOR.PATCH` tags on Sunday morning Pacific. It builds Linux and Windows executables and performs a short startup smoke test. Existing tags are baselined, macOS builds stay local, and CI does not publish releases or installers. The older macOS release workflow is retained but disabled.
 
 ## Controls
 

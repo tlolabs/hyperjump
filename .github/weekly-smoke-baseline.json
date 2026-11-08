@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "repository": "tlolabs/hyperjump",
+  "captured_at": "2026-11-08T01:13:36Z",
+  "entries": [
+    {
+      "tag": "v0.1.0",
+      "sha": "ee0b8c19ecdb434fe25c2ce2c59f1262c93c0436",
+      "target": "linux-x64"
+    },
+    {
+      "tag": "v0.1.0",
+      "sha": "ee0b8c19ecdb434fe25c2ce2c59f1262c93c0436",
+      "target": "windows-x64"
+    }
+  ]
+}

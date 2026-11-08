@@ -1,0 +1,13 @@
+{
+  "repository": "tlolabs/hyperjump",
+  "archived_on": "2026-11-08",
+  "workflows": [
+    {
+      "name": "Build macOS DMG",
+      "workflow_id": 253200657,
+      "original_path": ".github/workflows/release-macos.yml",
+      "archive_path": ".github/workflow-archive/2026-11-08/release-macos.yml",
+      "sha256": "5b163dd2b1639cbca002f141c35b2edd60fd7d876824eb5d454ee141d883d24b"
+    }
+  ]
+}
