@@ -20,6 +20,7 @@ jobs:
     outputs:
       matrix: ${{ steps.tags.outputs.matrix }}
       has_new: ${{ steps.tags.outputs.has_new }}
+      release_plan: ${{ steps.tags.outputs.release_plan }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -27,14 +28,13 @@ jobs:
           path: control
           persist-credentials: false
       - id: tags
-        name: Select and claim new version tags
+        name: Wait for matching published Mac release, then claim unseen targets
         env:
           GH_TOKEN: ${{ github.token }}
         run: >-
-          python3 control/.github/scripts/weekly_release_smoke.py select
-          --pattern '^v[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$'
-          --baseline-file control/.github/weekly-smoke-baseline.json
-          --targets linux-x64,windows-x64 --claim
+          python3 control/.github/scripts/native_release.py select
+          --baseline-file control/.github/weekly-smoke-baseline.json --claim
+
   smoke:
     name: Smoke ${{ matrix.tag }} (${{ matrix.target }})
     needs: select
@@ -42,7 +42,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.select.outputs.matrix) }}
-    runs-on: ${{ matrix.target == 'linux-x64' && 'ubuntu-24.04' || matrix.target == 'linux-arm64' && 'ubuntu-24.04-arm' || matrix.target == 'windows-arm64' && 'windows-11-arm' || 'windows-2025' }}
+    runs-on: ${{ matrix.target == 'linux-x64' && 'ubuntu-24.04' || 'windows-2025' }}
     timeout-minutes: 45
     permissions:
       contents: read
@@ -50,8 +50,7 @@ jobs:
       run:
         working-directory: source
     env:
-      ARCH: ${{ endsWith(matrix.target, 'arm64') && 'arm64' || 'x64' }}
-      RUST_TARGET: ${{ endsWith(matrix.target, 'arm64') && 'aarch64-pc-windows-msvc' || 'x86_64-pc-windows-msvc' }}
+      NATIVE_ITEM: ${{ toJSON(matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -63,29 +62,79 @@ jobs:
           ref: ${{ matrix.sha }}
           path: source
           persist-credentials: false
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.14'
-      - name: Linux native display prerequisites
+          python-version: '3.12'
+      - name: Install Linux display dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri libegl1 libxkbcommon0
-      - name: Install pinned build requirements
-        run: python -m pip install -r requirements.txt -r build_requirements.txt
-      - name: Build native executable
-        run: python -m PyInstaller --noconfirm "Hyper Jump.spec"
-      - name: Linux native startup smoke
+        run: sudo apt-get update && sudo apt-get install -y xvfb xauth libgl1 libegl1 libx11-6 libxrandr2 libxi6
+      - name: Install supported native wheel dependencies
+        run: >-
+          python -m pip install --only-binary=:all: -r requirements.txt -r build_requirements.txt
+      - name: Record exact build dependency versions
+        run: python -m pip freeze
+      - name: Build native executable and complete runtime directory
+        run: python -m PyInstaller --noconfirm 'Hyper Jump.spec'
+      - id: package
+        name: Package the full native distribution
+        run: python ../control/.github/scripts/native_package.py package
+      - name: Extract and smoke-test Linux release archive
         if: runner.os == 'Linux'
-        timeout-minutes: 2
-        env:
-          LIBGL_ALWAYS_SOFTWARE: '1'
-        run: xvfb-run -a python3 ../control/.github/scripts/launch_smoke.py 'dist/Hyper Jump/Hyper Jump'
-      - name: Windows native startup smoke
+        run: xvfb-run -a python3 ../control/.github/scripts/native_package.py smoke
+      - name: Extract and smoke-test Windows release archive
         if: runner.os == 'Windows'
-        timeout-minutes: 2
-        run: python ../control/.github/scripts/launch_smoke.py 'dist/Hyper Jump/Hyper Jump.exe'
+        run: python ../control/.github/scripts/native_package.py smoke
+      - name: Transfer only smoke-tested archive and receipt
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.package.outputs.artifact_name }}
+          path: source/release-assets/*
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  publish:
+    name: Publish ${{ matrix.tag }} (${{ matrix.target }})
+    needs: [select, smoke]
+    if: always() && github.run_attempt == 1 && needs.select.result == 'success' && needs.select.outputs.has_new == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.select.outputs.matrix) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    env:
+      NATIVE_ITEM: ${{ toJSON(matrix) }}
+    steps:
+      # No release-tag checkout or build-produced code runs with this token.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          path: control
+          persist-credentials: false
+      - id: eligible
+        name: Verify this exact target's native job passed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 control/.github/scripts/native_release.py eligible
+      - name: Download this run's tested artifact
+        if: steps.eligible.outputs.passed == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ steps.eligible.outputs.artifact_name }}
+          path: release-assets
+      - name: Attach verified bytes to the unchanged matching Mac release
+        if: steps.eligible.outputs.passed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_PLAN: ${{ needs.select.outputs.release_plan }}
+        run: python3 control/.github/scripts/native_release.py publish
+
   finalize:
     needs: [select, smoke]
-    if: always() && github.run_attempt == 1 && needs.select.outputs.has_new == 'true'
+    if: always() && github.run_attempt == 1 && needs.select.result == 'success' && needs.select.outputs.has_new == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -98,8 +147,7 @@ jobs:
           ref: ${{ github.sha }}
           path: control
           persist-credentials: false
-      - name: Record each native target outcome
-        env:
+      - env:
           GH_TOKEN: ${{ github.token }}
           SMOKE_MATRIX: ${{ needs.select.outputs.matrix }}
         run: python3 control/.github/scripts/weekly_release_smoke.py finalize --matrix-env SMOKE_MATRIX

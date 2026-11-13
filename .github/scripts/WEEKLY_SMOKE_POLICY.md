@@ -1,5 +1,7 @@
 # Weekly new-release-tag smoke gate
 
+For Hyper Jump, the owner-authorized [native release contract](NATIVE_RELEASE_POLICY.md) adds a published-Mac-release precondition, packaging, extracted-archive smoke tests and a separate least-privilege publisher. The generic gate below remains unchanged and does not itself upload assets. The old no-publication integration example is not the active workflow.
+
 Files to copy into each repository:
 
 - `weekly_release_smoke.py` → `.github/scripts/weekly_release_smoke.py`
