@@ -45,11 +45,7 @@ The DMG is written to `dist/Hyper Jump-macOS-<arch>.dmg`.
 
 ## GitHub Releases
 
-Tom builds and tests macOS locally, then publishes its DMG (or Mac ZIP/PKG) on the matching `vMAJOR.MINOR.PATCH` GitHub release. On Sunday morning Pacific (16:17 UTC), native GitHub-hosted Linux x64 and Windows x64 runners pick up new version tags **only after that published release contains a Mac asset**. Each runner builds the exact tagged commit, packages the complete app, extracts the archive into a clean temporary location, and checks a real rendered frame plus firing, enemy spawning, shield and restart behavior. CI uses silent audio and software rendering; this is a packaging/startup/gameplay smoke test, not a full play-through, audio playback test or GPU compatibility certification.
-
-Passing targets are attached independently to that same release as `Hyper-Jump-<tag>-linux-x64.tar.gz` or `Hyper-Jump-<tag>-windows-x64.zip`, with a `.smoke.json` receipt containing the tested archive SHA-256 and run provenance. Extract the entire archive before launching the executable inside `Hyper Jump`. Linux packages target Ubuntu 24.04-compatible x64 systems; Windows packages target x64 Windows. Neither package is code-signed by this workflow.
-
-Existing tags stay baselined, so `v0.1.0` is not retroactively rebuilt. Missing Mac releases wait without consuming an attempt. Attempted builds, failed smoke tests, publication failures and uncertain uploads are **not automatically retried**; inspect the linked workflow and request targeted recovery explicitly. Existing assets are never overwritten. CI never creates/releases a version on Tom's behalf, moves tags, builds macOS or enables the archived macOS workflow. New tags must include the packaged smoke-test entry point introduced with this workflow. See [.github/scripts/NATIVE_RELEASE_POLICY.md](.github/scripts/NATIVE_RELEASE_POLICY.md) for the release contract.
+Native CI checks new `vMAJOR.MINOR.PATCH` tags on Sunday morning Pacific. It builds Linux and Windows executables and performs a short startup smoke test. Existing tags are baselined, macOS builds stay local, and CI does not publish releases or installers. The older macOS release workflow is retained but disabled.
 
 ## Controls
 

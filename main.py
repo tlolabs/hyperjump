@@ -1445,22 +1445,5 @@ class AlienShooterGame(ShowBase):
 
 
 if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Hyper Jump")
-    parser.add_argument("--smoke-report", type=Path,
-                        help="Run the packaged native smoke test and write its JSON result")
-    args = parser.parse_args()
-    if args.smoke_report:
-        # Real software-rendered window, without requiring a hosted runner GPU
-        # or audio device. This configuration is never used for normal play.
-        loadPrcFileData("smoke", "win-size 640 480\nsync-video 0\naudio-library-name null\nload-display p3tinydisplay")
     game = AlienShooterGame()
-    if args.smoke_report:
-        from native_smoke import run
-        try:
-            run(game, args.smoke_report)
-        finally:
-            game.destroy()
-    else:
-        game.run()
+    game.run()
